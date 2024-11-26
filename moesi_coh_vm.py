@@ -11,7 +11,6 @@ class MOESIState(Enum):
     SHARED = 'S'
     INVALID = 'I'
 
-
 # MOESI Coherence for VMs
 class MOESICoherence:
     def __init__(self, vm_name):
