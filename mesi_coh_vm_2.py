@@ -51,7 +51,7 @@ class MESICoherence:
 
     def _invalidate_shared_cache(self, address):
         # Invalidate shared cache entry for the address
-        with open("/shared_cxl/cache.txt", "a") as f:
+        with open("/home/fedora/vm1/project/cache.txt", "a") as f:
             f.write(f"{address}\n")
         print(f"VM2 INVALIDATE: Address {address} written to shared memory")
 
