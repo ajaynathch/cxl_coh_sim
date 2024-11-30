@@ -50,8 +50,6 @@ class MESICoherence:
         else:
             print(f"VM2 READ miss: address {self.address}")
             self.lru_cache.cache[self.address] = [self.data, "I"]
-            print(self.lru_cache.cache)
-            print(self.address)
             output = self.run_daxreader(self.address)
             self.parse_shared_cache(output, self.address)
             return False
@@ -87,7 +85,7 @@ class MESICoherence:
         if is_exists:
             if self.address in self.lru_cache.cache.keys():
                 data = self.lru_cache.cache[self.address][0]
-                self.lru_cache.cache[self.address] = [data, "S"]
+                self.lru_cache.cache[self.address] = [data, "I"]
                 self.write_to_local_cache(self.vm1_cache_filename)
                 print(f"VM1 INVALIDATE: Address {address}")
                 return True

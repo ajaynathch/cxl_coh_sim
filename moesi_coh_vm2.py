@@ -7,16 +7,16 @@ from lru_cache import *
 from dax_parser import *
 
 
-# MESI Coherence for VM1
+# MESI Coherence for VM2
 class MESICoherence:
     def __init__(self):
-        self.directory = "/home/fedora/project/vm2/project/"
+        self.directory = "/home/fedora/project/vm1/project/"
         self.address = sys.argv[1].split(":")[0].strip().replace(" ", "")
         self.data = sys.argv[1].split(':')[1].strip().replace(" ", "")
         self.lru_cache = LRUCache(2)
         self.dax_parser = DAXParser()
-        self.vm1_cache_filename = "cache_vm1.txt"
-        self.vm2_cache_filename = "/home/fedora/project/vm2/project/cache_vm2.txt"
+        self.vm2_cache_filename = "cache_vm2.txt"
+        self.vm1_cache_filename = "/home/fedora/project/vm1/project/cache_vm1.txt"
 
     def write_to_local_cache(self, filename):
         with open(filename, 'w') as file:
@@ -31,23 +31,24 @@ class MESICoherence:
                 return False
 
     def read(self):
-        self.read_from_local_cache(self.vm1_cache_filename)
+        self.read_from_local_cache(self.vm2_cache_filename)
         if self.address in self.lru_cache.cache.keys():
             state = self.lru_cache.cache[self.address]
-            print(f"VM1 READ hit: address {self.address}, State {state}")
+            print(f"VM2 READ hit: address {self.address}, State {state}")
             if state[1] == "I":
                 print(f"Read from the Memory for {self.address}, as state: {state}")
                 output = self.run_daxreader(self.address)
                 self.parse_shared_cache(output, self.address)
                 self.lru_cache.access(self.address, "S")
-            elif state[1] == "E":
+                return True
+            elif state[1] in ["E", "O"]:
                 print(f"VM1 READ Hit change {state} to Shared: address {self.address}")
                 self.read_from_local_cache(self.vm1_cache_filename)
                 self.lru_cache.cache[self.address] = [self.data, "S"]
                 self.write_to_local_cache(self.vm1_cache_filename)
                 return True
         else:
-            print(f"VM1 READ miss: address {self.address}")
+            print(f"VM2 READ miss: address {self.address}")
             self.lru_cache.cache[self.address] = [self.data, "I"]
             output = self.run_daxreader(self.address)
             self.parse_shared_cache(output, self.address)
@@ -57,35 +58,42 @@ class MESICoherence:
         self.dax_parser.dax_output = output
         self.dax_parser.parse()
         data = self.dax_parser.read_address(address)
-        self.read_from_local_cache(self.vm1_cache_filename)
+        print(data)
+        self.read_from_local_cache(self.vm2_cache_filename)
         self.lru_cache.cache[self.address] = [data, "S"]
-        self.write_to_local_cache(self.vm1_cache_filename)
-        print(f"VM1 FETCH: Address {address} set to SHARED")
+        self.write_to_local_cache(self.vm2_cache_filename)
+        print(f"VM2 FETCH: Address {address} set to SHARED")
 
     def write(self):
-        vm2_exists = self.invalidate_vm2_cache(self.address)
+        vm1_exists = self.invalidate_vm1_cache(self.address)
         output = self.run_daxreader(self.address)
         self.dax_parser.dax_output = output
         self.dax_parser.parse()
         self.lru_cache.cache[self.address] = [self.data, "M"]
         self.dax_parser.write_address(self.address, self.data)
         self.run_daxwriter(self.dax_parser.data)
-        if not vm2_exists:
-            self.read_from_local_cache(self.vm1_cache_filename)
+        if not vm1_exists:
+            self.read_from_local_cache(self.vm2_cache_filename)
             self.lru_cache.cache[self.address] = [self.data, "E"]
+            self.write_to_local_cache(self.vm2_cache_filename)
+            print(f"VM2 EXCLUSIVE: Address {self.address}")
+        else:
+            self.read_from_local_cache(self.vm1_cache_filename)
+            self.lru_cache.cache[self.address] = [self.data, "O"]
             self.write_to_local_cache(self.vm1_cache_filename)
-            print(f"VM1 EXCLUSIVE: Address {self.address}")
+            print(f"VM1 OWNED: Address {self.address}")
+            self.invalidate_vm1_cache(self.address)
 
-        print(f"VM1 WRITE: address {self.address} set to MODIFIED")
+        print(f"VM2 WRITE: address {self.address} set to MODIFIED")
 
-    def invalidate_vm2_cache(self, address):
-        is_exists = self.read_from_local_cache(self.vm2_cache_filename)
+    def invalidate_vm1_cache(self, address):
+        is_exists = self.read_from_local_cache(self.vm1_cache_filename)
         if is_exists:
             if self.address in self.lru_cache.cache.keys():
                 data = self.lru_cache.cache[self.address][0]
                 self.lru_cache.cache[self.address] = [data, "I"]
-                self.write_to_local_cache(self.vm2_cache_filename)
-                print(f"VM2 INVALIDATE: Address {address}")
+                self.write_to_local_cache(self.vm1_cache_filename)
+                print(f"VM1 INVALIDATE: Address {address}")
                 return True
             else:
                 return False
@@ -99,8 +107,7 @@ class MESICoherence:
         try:
             # Convert message to a JSON-like string or another suitable format
             if isinstance(message, (dict, OrderedDict)):
-                message_str = "{" + ", ".join(f"'{k}': '{v}'" for k, v in message.items()) + "}"
-                # message_str = json.dumps(message, separators=(",", ":"))  # Convert to string (JSON-like representation)
+                message_str = "{" + ", ".join(f"'{k}': '{v}'"for k, v in message.items()) + "}"
             else:
                 message_str = message  # Use directly if already a string
 
@@ -153,25 +160,22 @@ class MESICoherence:
 
 
 # Test Scenarios for VM1
-def test_vm1():
+def test_vm2():
     mesi = MESICoherence()
 
-    print("\n--- VM1 Operations ---")
+    print("\n--- VM2 Operations ---")
     print("\nScenario 1: Shared Read Access")
+    time.sleep(1)
     mesi.read()
-
-    print("\nScenario 2: Write Invalidation")
-    mesi.write()
     time.sleep(2)
-    #
+
+    print("\nScenario 2:read")
+    mesi.read()
+    time.sleep(1)
+
     print("\nScenario 3: Fetch from Shared")
-    mesi.read()
-
-    time.sleep(2)
-
-    print("\nScenario 4: Fetch from Shared")
     mesi.read()
 
 
 if __name__ == "__main__":
-    test_vm1()
+    test_vm2()
