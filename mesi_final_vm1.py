@@ -35,11 +35,16 @@ class MESICoherence:
         if self.address in self.lru_cache.cache.keys():
             state = self.lru_cache.cache[self.address]
             print(f"VM1 READ hit: address {self.address}, State {state}")
-            if state == "I":
+            if state[1] == "I":
                 print(f"Read from the Memory for {self.address}, as state: {state}")
                 output = self.run_daxreader(self.address)
                 self.parse_shared_cache(output, self.address)
                 self.lru_cache.access(self.address, "S")
+            elif state[1] == "E":
+                print(f"VM1 READ Hit change {state} to Shared: address {self.address}")
+                self.read_from_local_cache(self.vm1_cache_filename)
+                self.lru_cache.cache[self.address] = [self.data, "S"]
+                self.write_to_local_cache(self.vm1_cache_filename)
                 return True
         else:
             print(f"VM1 READ miss: address {self.address}")
@@ -94,7 +99,8 @@ class MESICoherence:
         try:
             # Convert message to a JSON-like string or another suitable format
             if isinstance(message, (dict, OrderedDict)):
-                message_str = json.dumps(message)  # Convert to string (JSON-like representation)
+                message_str = "{" + ", ".join(f"'{k}': '{v}'" for k, v in message.items()) + "}"
+                # message_str = json.dumps(message, separators=(",", ":"))  # Convert to string (JSON-like representation)
             else:
                 message_str = message  # Use directly if already a string
 
@@ -153,17 +159,18 @@ def test_vm1():
     print("\n--- VM1 Operations ---")
     print("\nScenario 1: Shared Read Access")
     mesi.read()
-    time.sleep(1)
 
     print("\nScenario 2: Write Invalidation")
     mesi.write()
-    time.sleep(1)
+    time.sleep(2)
     #
-    # print("\nScenario 3: Fetch from Shared")
-    # mesi.read()
-    #
-    # print("\nScenario 4: Fetch from Shared")
-    # mesi.read()
+    print("\nScenario 3: Fetch from Shared")
+    mesi.read()
+
+    time.sleep(2)
+
+    print("\nScenario 4: Fetch from Shared")
+    mesi.read()
 
 
 if __name__ == "__main__":
