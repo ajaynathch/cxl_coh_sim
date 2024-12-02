@@ -46,10 +46,10 @@ class DAXParser:
         match = re.search(r"\{(.*)\}", self.dax_output)
         if match:
             content = match.group(1)
-            if protocol == "Snooping":
-                self._parse_snooping(content)
-            elif protocol == "Directory":
+            if ":" in content and "[" in content:
                 self._parse_directory(content)
+            else:
+                self._parse_snooping(content)
 
     def _parse_snooping(self, content):
         """
@@ -68,18 +68,22 @@ class DAXParser:
         Populate the Directory object and self.data.
         Example: {'0xABC': ['Ajay', 'U', ''], '0xCCC': ['Alas', 'U', '']}
         """
-        for pair in content.split("],"):
-            key, value = pair.split(":")
-            key = key.strip().strip("'")
-            value = value.strip().strip("'").replace("[", "").replace("]", "")
-            # Convert value into a list of strings
-            parsed_values = [v.strip().strip("'")  for v in value.split(",")]
-            self.data[key] = parsed_values
+        if not content.startswith("{") or not content.endswith("}"):
+            content = "{" + content + "}"
+        parsed_content = eval(content)  # Ensure the input is trusted
 
-            # Update the directory object
-            state = parsed_values[1] if len(parsed_values) > 1 else "U"
-            owners = parsed_values[2:] if len(parsed_values) > 2 else []
-            self.directory.set_state(key, state, owners)
+        for address, info in parsed_content.items():
+            # Extract state and owners
+            state = info.get("state", "U")
+            owners_raw = info.get("owners", [])
+            # Convert owners to integers, ignoring empty strings
+            owners = [int(o) for o in owners_raw if isinstance(o, str) and o.isdigit()]
+            owners += [o for o in owners_raw if isinstance(o, int)]
+
+            # Print parsed results
+            print(f"Address: {address}, State: {state}, Owners: {owners}")
+
+            self.directory.set_state(address, state, owners)
 
     def read_address(self, address, protocol="Snooping"):
         """
@@ -118,17 +122,17 @@ if __name__ == "__main__":
     dax_output_snooping = "Paragraph read from DAX device:\n{'0xABC': 'Ajay', '0xCCC': 'Alas', '0xDDD': 'Ajay-1', '0xEEE': 'Ajay-2'}"
     snooping_parser = DAXParser()
     snooping_parser.set_output(dax_output_snooping)
-    snooping_parser.parse(protocol="Snooping")
+    snooping_parser.parse()
 
     print("\n--- Snooping Protocol Parsed Data ---")
-    snooping_parser.display_data(protocol="Snooping")
+    snooping_parser.display_data()
 
     # Test with Directory protocol format
     dax_output_directory = """Paragraph read from DAX device:
-    {'0xABC': ['Ajay', 'U', ''], '0xCCC': ['Alas', 'U', ''], '0xDDD': ['Ajay-1', 'U', ''], '0xEEE': ['Ajay-2', 'U', '']}"""
+    {'0xABC': {'state': 'S', 'owners': [1]}, '0xCCC': {'state': 'U', 'owners': ['']}, '0xDDD': {'state': 'U', 'owners': ['']}, '0xEEE': {'state': 'U', 'owners': ['']}}"""
     directory_parser = DAXParser()
     directory_parser.set_output(dax_output_directory)
-    directory_parser.parse(protocol="Directory")
+    directory_parser.parse()
 
     print("\n--- Directory Protocol Parsed Data ---")
     directory_parser.display_data(protocol="Directory")
