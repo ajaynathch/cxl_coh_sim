@@ -106,7 +106,6 @@ class MESICoherence:
             # Convert message to a JSON-like string or another suitable format
             if isinstance(message, (dict, OrderedDict)):
                 message_str = "{" + ", ".join(f"'{k}': '{v}'" for k, v in message.items()) + "}"
-                # message_str = json.dumps(message, separators=(",", ":"))  # Convert to string (JSON-like representation)
             else:
                 message_str = message  # Use directly if already a string
 

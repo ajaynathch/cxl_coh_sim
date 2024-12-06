@@ -2,7 +2,6 @@ import mmap
 import os
 import sys
 
-# Replace with your DAX device file path
 FILENAME = "/dev/dax0.0"
 REGION_SIZE = 4294967296  # 4 GB
 

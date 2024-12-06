@@ -166,12 +166,6 @@ def test_vm2():
     print("\nScenario 2:read")
     mesi.read()
     time.sleep(1)
-    #
-    # print("\nScenario 3: Fetch from Shared")
-    # mesi.read()
-    #
-    # print("\nScenario 4: Fetch from Shared")
-    # mesi.read()
 
 
 if __name__ == "__main__":

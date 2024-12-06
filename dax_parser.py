@@ -46,27 +46,3 @@ class DAXParser:
         for key, value in self.data.items():
             print(f"{key}: {value}")
 
-
-# Example Usage
-if __name__ == "__main__":
-    dax_output = "Paragraph read from DAX device:\n{'0xABC': 'Ajay', '0xCCC': 'Alas', '0xDDD': 'Ajay-1', '0xEEE': 'Ajay-2'}"
-    parser = DAXParser()
-
-    # Set the DAX output and parse it
-    parser.set_output(dax_output)
-    parser.parse()
-
-    print("Parsed Data:")
-    parser.display_data()
-
-    # Read a specific address
-    address_to_read = "0xABC"
-    value = parser.read_address(address_to_read)
-    print(f"\nValue at address {address_to_read}: {value}")
-
-    # Write to a specific address
-    address_to_write = "0xFFF"
-    value_to_write = "Ajay-New"
-    parser.write_address(address_to_write, value_to_write)
-    print("\nData after writing:")
-    parser.display_data()
